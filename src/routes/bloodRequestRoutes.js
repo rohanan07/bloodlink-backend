@@ -1,7 +1,7 @@
 // Routes for managing blood requests.
 
 import express from 'express';
-import { createRequest, getActiveRequests, acceptRequest, completeRequest } from '../controller/bloodRequestController.js';
+import { createRequest, getActiveRequests, acceptRequest, completeRequest, getRequestById } from '../controller/bloodRequestController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import checkRole from '../middleware/roleMiddleware.js';
 
@@ -26,5 +26,7 @@ router.post('/:requestId/accept', authMiddleware, checkRole('donor'), acceptRequ
 // @desc    The original requester marks a request as completed
 // @access  Private (Requester only)
 router.put('/:requestId/complete', authMiddleware, completeRequest);
+
+router.get('/:requestId', authMiddleware, getRequestById); 
 
 export default router;

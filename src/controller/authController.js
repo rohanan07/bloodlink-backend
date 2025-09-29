@@ -99,7 +99,7 @@ export const loginUser = async (req, res) => {
 
         sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
             if (err) throw err;
-            res.json({ token, message: "Logged in successfully!" });
+            res.json({ token,userId: user.user_id, message: "Logged in successfully!" });
         });
 
     } catch (err) {

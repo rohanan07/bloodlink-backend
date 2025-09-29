@@ -1,6 +1,13 @@
 // Contains the logic for user-related endpoints.
 
 import { query } from '../db/db.js';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // --- Get Logged-in User's Profile ---
 export const getMe = async (req, res) => {
@@ -10,7 +17,7 @@ export const getMe = async (req, res) => {
 
         // Fetch user data from the database, excluding the password hash
         const user = await query(
-            'SELECT user_id, name, email, blood_group, role, latitude, longitude, created_at FROM users WHERE user_id = $1',
+            'SELECT user_id, name, email, blood_group, role, profile_image_url, latitude, longitude, created_at FROM users WHERE user_id = $1',
             [userId]
         );
 
@@ -86,3 +93,46 @@ export const getMyDonations = async (req, res) => {
     }
 };
 
+// --- Upload or Update a user's profile photo ---
+export const uploadProfilePhoto = async (req, res) => {
+    const userId = req.user.id;
+
+    if (!req.file) {
+        return res.status(400).json({ msg: 'No file uploaded.' });
+    }
+
+    try {
+        // The file is in memory from multer. We need to stream it to Cloudinary.
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                resource_type: 'image',
+                folder: 'bloodlink_profiles', // Optional: organize uploads in a folder
+                public_id: userId, // Use the user's ID as the public ID to overwrite old photos
+                overwrite: true,
+            },
+            async (error, result) => {
+                if (error) {
+                    console.error('Cloudinary upload error:', error);
+                    return res.status(500).send('Error uploading image.');
+                }
+
+                // Image uploaded successfully, now save the URL to the database
+                const imageUrl = result.secure_url;
+                const updateQuery = "UPDATE users SET profile_image_url = $1 WHERE user_id = $2 RETURNING profile_image_url";
+                const updatedUser = await query(updateQuery, [imageUrl, userId]);
+
+                res.json({
+                    msg: 'Profile photo updated successfully.',
+                    profile_image_url: updatedUser.rows[0].profile_image_url,
+                });
+            }
+        );
+
+        // Pipe the file buffer into the Cloudinary upload stream
+        uploadStream.end(req.file.buffer);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};

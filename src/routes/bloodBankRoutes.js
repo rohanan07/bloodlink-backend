@@ -20,6 +20,7 @@ router.get('/stock/me', authMiddleware, checkRole('hospital'), getMyStock);
 // @access  Private (Hospital Only)
 router.put('/stock', authMiddleware, checkRole('hospital'), updateMyStock);
 
+// @route GET /api/v1/blood-bank/stock/all
 router.get('/stock/all' , getAllStock);
 
 export default router;

@@ -1,11 +1,13 @@
 // Routes for user-specific actions, like fetching a profile.
 
 import express from 'express';
-import { getMe , getMyRequests, getMyDonations} from '../controller/userController.js';
+import { getMe , getMyRequests, getMyDonations, uploadProfilePhoto} from '../controller/userController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import checkRole from '../middleware/roleMiddleware.js';
+import multer from 'multer';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // @route   GET /api/v1/users/me
 // @desc    Get current logged-in user's profile
@@ -21,5 +23,7 @@ router.get('/my-requests', authMiddleware, getMyRequests);
 // @desc    Get donation history for the logged-in donor
 // @access  Private (Donor only)
 router.get('/my-donations', authMiddleware, checkRole('donor'), getMyDonations);
+
+router.put('/me/profile-photo', authMiddleware, upload.single('profilePhoto'), uploadProfilePhoto)
 
 export default router;

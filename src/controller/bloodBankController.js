@@ -91,6 +91,7 @@ export const getAllStock = async (req, res) => {
                 u.name AS hospital_name,
                 u.latitude,
                 u.longitude,
+                u.contact_number,
                 bb.a_positive,
                 bb.a_negative,
                 bb.b_positive,

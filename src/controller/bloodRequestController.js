@@ -80,7 +80,7 @@ export const acceptRequest = async (req, res) => {
     try {
         await query('BEGIN'); // Start transaction
 
-        const findRequestQuery = "SELECT requester_id, status FROM blood_requests WHERE request_id = $1 FOR UPDATE";
+        const findRequestQuery = "SELECT requester_id, status, patient_name FROM blood_requests WHERE request_id = $1 FOR UPDATE";
         const requestResult = await query(findRequestQuery, [requestId]);
 
         if (requestResult.rows.length === 0) {
@@ -88,7 +88,7 @@ export const acceptRequest = async (req, res) => {
             return res.status(404).json({ msg: 'Request not found.' });
         }
 
-        const { requester_id, status } = requestResult.rows[0];
+        const { requester_id, status, patient_name } = requestResult.rows[0];
 
         if (status !== 'open') {
             await query('ROLLBACK');
@@ -108,7 +108,7 @@ export const acceptRequest = async (req, res) => {
         if (requesterSocketId) {
             req.io.to(requesterSocketId).emit('request_accepted', {
                 requestId: requestId,
-                message: `A donor has accepted your blood request for patient ${requestResult.rows[0].patient_name || 'N/A'}.`
+                message: `A donor has accepted your blood request for patient ${patient_name}.`
             });
             console.log(`✅ Emitting 'request_accepted' to user ${requester_id} on socket ${requesterSocketId}`);
         } else {
@@ -120,6 +120,10 @@ export const acceptRequest = async (req, res) => {
 
     } catch (err) {
         await query('ROLLBACK');
+        // FIX: Check for the specific 'unique violation' error code from PostgreSQL
+        if (err.code === '23505') {
+            return res.status(409).json({ msg: 'You have already accepted this request.' });
+        }
         console.error(err.message);
         res.status(500).send('Server Error');
     }
@@ -155,6 +159,46 @@ export const completeRequest = async (req, res) => {
         const updatedRequest = await query(updateQuery, [requestId]);
 
         res.json({ msg: 'Request successfully marked as completed.', request: updatedRequest.rows[0] });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// ... existing functions ...
+
+// --- Get a single request by ID ---
+export const getRequestById = async (req, res) => {
+    const { requestId } = req.params;
+
+    try {
+        const queryText = `
+            SELECT 
+                br.request_id,
+                br.patient_name,
+                br.blood_group,
+                br.required_units,
+                br.urgency,
+                br.hospital_name,
+                br.contact_person,
+                br.contact_number,
+                br.latitude,
+                br.longitude,
+                br.status,
+                br.created_at,
+                u.name as requester_name
+            FROM blood_requests br
+            JOIN users u ON br.requester_id = u.user_id
+            WHERE br.request_id = $1;
+        `;
+        const { rows } = await query(queryText, [requestId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ msg: 'Request not found' });
+        }
+
+        res.json(rows[0]);
 
     } catch (err) {
         console.error(err.message);

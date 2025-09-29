@@ -24,6 +24,7 @@ const server = http.createServer(app);
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // To parse JSON bodies from requests
 
+
 // --- Socket.IO Setup ---
 const io = new Server(server, {
     cors: {
@@ -33,29 +34,6 @@ const io = new Server(server, {
 });
 
 const userSocketMap = new Map();
-
-// Test database connection on startup
-pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-        console.error('❌ Error connecting to the database', err.stack);
-    } else {
-        console.log('✅ Database connected successfully at:', res.rows[0].now);
-    }
-});
-
-// --- API Routes ---
-// A simple test route
-app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to the BloodLink API!' });
-});
-
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/blood-bank', bloodBankRoutes);
-app.use('/api/v1/requests', bloodRequestRoutes);
-app.use('/api/v1/camps', campRoutes);
-app.use('/api/v1/search', searchRoutes);
-
 
 // --- Socket.IO Real-time Logic ---
 io.on('connection', (socket) => {
@@ -93,4 +71,28 @@ app.use(attachSocketIO(io, userSocketMap));
 server.listen(port, () => {
     console.log(`🚀 BloodLink server is running on http://localhost:${port}`);
 });
+
+
+
+// Test database connection on startup
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+        console.error('❌ Error connecting to the database', err.stack);
+    } else {
+        console.log('✅ Database connected successfully at:', res.rows[0].now);
+    }
+});
+
+// --- API Routes ---
+// A simple test route
+app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to the BloodLink API!' });
+});
+
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/blood-bank', bloodBankRoutes);
+app.use('/api/v1/requests', bloodRequestRoutes);
+app.use('/api/v1/camps', campRoutes);
+app.use('/api/v1/search', searchRoutes);
 
